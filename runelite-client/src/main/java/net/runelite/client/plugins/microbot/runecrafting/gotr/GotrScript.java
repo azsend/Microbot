@@ -48,8 +48,25 @@ public class GotrScript extends Script {
 
     public static boolean isInMiniGame = false;
     public static boolean isFirstPortal = true;
-    public static final int portalId = ObjectID.PORTAL_43729;
+    public static final int portalId = 43729;
     public static final int greatGuardianId = 11403;
+    public static final int UNCHARGED_CELLS = 43732;
+
+
+    private static final int GUARDIAN_OF_AIR = 43710;
+    private static final int GUARDIAN_OF_MIND = 43711;
+    private static final int GUARDIAN_OF_WATER = 43712;
+    private static final int GUARDIAN_OF_EARTH = 43713;
+    private static final int GUARDIAN_OF_FIRE = 43714;
+    private static final int GUARDIAN_OF_BODY = 43715;
+    private static final int GUARDIAN_OF_COSMIC = 43716;
+    private static final int GUARDIAN_OF_CHAOS = 43717;
+    private static final int GUARDIAN_OF_NATURE = 43718;
+    private static final int GUARDIAN_OF_LAW = 43719;
+    private static final int GUARDIAN_OF_DEATH = 43720;
+    private static final int GUARDIAN_OF_BLOOD = 43721;
+
+    
     public static final Map<Integer, GuardianPortalInfo> guardianPortalInfo = new HashMap<>();
     public static Optional<Instant> nextGameStart = Optional.empty();
     public static Optional<Instant> timeSincePortal = Optional.empty();
@@ -68,41 +85,41 @@ public class GotrScript extends Script {
 
     static boolean useNpcContact = true;
     private final List<Integer> runeIds = ImmutableList.of(
-            ItemID.NATURE_RUNE,
-            ItemID.LAW_RUNE,
-            ItemID.BODY_RUNE,
-            ItemID.DUST_RUNE,
-            ItemID.LAVA_RUNE,
-            ItemID.STEAM_RUNE,
-            ItemID.SMOKE_RUNE,
-            ItemID.SOUL_RUNE,
-            ItemID.WATER_RUNE,
-            ItemID.AIR_RUNE,
-            ItemID.EARTH_RUNE,
-            ItemID.FIRE_RUNE,
-            ItemID.MIND_RUNE,
-            ItemID.CHAOS_RUNE,
-            ItemID.DEATH_RUNE,
-            ItemID.BLOOD_RUNE,
-            ItemID.COSMIC_RUNE,
-            ItemID.ASTRAL_RUNE,
-            ItemID.MIST_RUNE,
-            ItemID.MUD_RUNE,
-            ItemID.WRATH_RUNE);
+            net.runelite.api.gameval.ItemID.NATURERUNE,
+            net.runelite.api.gameval.ItemID.LAWRUNE,
+            net.runelite.api.gameval.ItemID.BODYRUNE,
+            net.runelite.api.gameval.ItemID.DUSTRUNE,
+            net.runelite.api.gameval.ItemID.LAVARUNE,
+            net.runelite.api.gameval.ItemID.STEAMRUNE,
+            net.runelite.api.gameval.ItemID.SMOKERUNE,
+            net.runelite.api.gameval.ItemID.SOULRUNE,
+            net.runelite.api.gameval.ItemID.WATERRUNE,
+            net.runelite.api.gameval.ItemID.AIRRUNE,
+            net.runelite.api.gameval.ItemID.EARTHRUNE,
+            net.runelite.api.gameval.ItemID.FIRERUNE,
+            net.runelite.api.gameval.ItemID.MINDRUNE,
+            net.runelite.api.gameval.ItemID.CHAOSRUNE,
+            net.runelite.api.gameval.ItemID.DEATHRUNE,
+            net.runelite.api.gameval.ItemID.BLOODRUNE,
+            net.runelite.api.gameval.ItemID.COSMICRUNE,
+            net.runelite.api.gameval.ItemID.ASTRALRUNE,
+            net.runelite.api.gameval.ItemID.MISTRUNE,
+            net.runelite.api.gameval.ItemID.MUDRUNE,
+            net.runelite.api.gameval.ItemID.WRATHRUNE);
 
     private void initializeGuardianPortalInfo() {
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_AIR, new GuardianPortalInfo("AIR", 1, ItemID.AIR_RUNE, 26887, 4353, RuneType.ELEMENTAL, CellType.WEAK, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_MIND, new GuardianPortalInfo("MIND", 2, ItemID.MIND_RUNE, 26891, 4354, RuneType.CATALYTIC, CellType.WEAK, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_WATER, new GuardianPortalInfo("WATER", 5, ItemID.WATER_RUNE, 26888, 4355, RuneType.ELEMENTAL, CellType.MEDIUM, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_EARTH, new GuardianPortalInfo("EARTH", 9, ItemID.EARTH_RUNE, 26889, 4356, RuneType.ELEMENTAL, CellType.STRONG, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_FIRE, new GuardianPortalInfo("FIRE", 14, ItemID.FIRE_RUNE, 26890, 4357, RuneType.ELEMENTAL, CellType.OVERCHARGED, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_BODY, new GuardianPortalInfo("BODY", 20, ItemID.BODY_RUNE, 26895, 4358, RuneType.CATALYTIC, CellType.WEAK, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_COSMIC, new GuardianPortalInfo("COSMIC", 27, ItemID.COSMIC_RUNE, 26896, 4359, RuneType.CATALYTIC, CellType.MEDIUM, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.LOST_CITY.getState(Microbot.getClient())).orElse(null)));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_CHAOS, new GuardianPortalInfo("CHAOS", 35, ItemID.CHAOS_RUNE, 26892, 4360, RuneType.CATALYTIC, CellType.MEDIUM, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_NATURE, new GuardianPortalInfo("NATURE", 44, ItemID.NATURE_RUNE, 26897, 4361, RuneType.CATALYTIC, CellType.STRONG, QuestState.FINISHED));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_LAW, new GuardianPortalInfo("LAW", 54, ItemID.LAW_RUNE, 26898, 4362, RuneType.CATALYTIC, CellType.STRONG, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.TROLL_STRONGHOLD.getState(Microbot.getClient())).orElse(null)));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_DEATH, new GuardianPortalInfo("DEATH", 65, ItemID.DEATH_RUNE, 26893, 4363, RuneType.CATALYTIC, CellType.OVERCHARGED, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.MOURNINGS_END_PART_II.getState(Microbot.getClient())).orElse(null)));
-        guardianPortalInfo.put(ObjectID.GUARDIAN_OF_BLOOD, new GuardianPortalInfo("BLOOD", 77, ItemID.BLOOD_RUNE, 26894, 4364, RuneType.CATALYTIC, CellType.OVERCHARGED, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.SINS_OF_THE_FATHER.getState(Microbot.getClient())).orElse(null)));
+        guardianPortalInfo.put(GUARDIAN_OF_AIR, new GuardianPortalInfo("AIR", 1, net.runelite.api.gameval.ItemID.AIRRUNE, 26887, 4353, RuneType.ELEMENTAL, CellType.WEAK, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_MIND, new GuardianPortalInfo("MIND", 2, net.runelite.api.gameval.ItemID.MINDRUNE, 26891, 4354, RuneType.CATALYTIC, CellType.WEAK, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_WATER, new GuardianPortalInfo("WATER", 5, net.runelite.api.gameval.ItemID.WATERRUNE, 26888, 4355, RuneType.ELEMENTAL, CellType.MEDIUM, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_EARTH, new GuardianPortalInfo("EARTH", 9, net.runelite.api.gameval.ItemID.EARTHRUNE, 26889, 4356, RuneType.ELEMENTAL, CellType.STRONG, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_FIRE, new GuardianPortalInfo("FIRE", 14, net.runelite.api.gameval.ItemID.FIRERUNE, 26890, 4357, RuneType.ELEMENTAL, CellType.OVERCHARGED, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_BODY, new GuardianPortalInfo("BODY", 20, net.runelite.api.gameval.ItemID.BODYRUNE, 26895, 4358, RuneType.CATALYTIC, CellType.WEAK, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_COSMIC, new GuardianPortalInfo("COSMIC", 27, net.runelite.api.gameval.ItemID.COSMICRUNE, 26896, 4359, RuneType.CATALYTIC, CellType.MEDIUM, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.LOST_CITY.getState(Microbot.getClient())).orElse(null)));
+        guardianPortalInfo.put(GUARDIAN_OF_CHAOS, new GuardianPortalInfo("CHAOS", 35, net.runelite.api.gameval.ItemID.CHAOSRUNE, 26892, 4360, RuneType.CATALYTIC, CellType.MEDIUM, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_NATURE, new GuardianPortalInfo("NATURE", 44, net.runelite.api.gameval.ItemID.NATURERUNE, 26897, 4361, RuneType.CATALYTIC, CellType.STRONG, QuestState.FINISHED));
+        guardianPortalInfo.put(GUARDIAN_OF_LAW, new GuardianPortalInfo("LAW", 54, net.runelite.api.gameval.ItemID.LAWRUNE, 26898, 4362, RuneType.CATALYTIC, CellType.STRONG, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.TROLL_STRONGHOLD.getState(Microbot.getClient())).orElse(null)));
+        guardianPortalInfo.put(GUARDIAN_OF_DEATH, new GuardianPortalInfo("DEATH", 65, net.runelite.api.gameval.ItemID.DEATHRUNE, 26893, 4363, RuneType.CATALYTIC, CellType.OVERCHARGED, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.MOURNINGS_END_PART_II.getState(Microbot.getClient())).orElse(null)));
+        guardianPortalInfo.put(GUARDIAN_OF_BLOOD, new GuardianPortalInfo("BLOOD", 77, net.runelite.api.gameval.ItemID.BLOODRUNE, 26894, 4364, RuneType.CATALYTIC, CellType.OVERCHARGED, Microbot.getClientThread().runOnClientThreadOptional(() -> Quest.SINS_OF_THE_FATHER.getState(Microbot.getClient())).orElse(null)));
     }
 
     public boolean run(GotrConfig config) {
@@ -245,7 +262,7 @@ public class GotrScript extends Script {
                 // Return to large mine if we were there before
                 if (!isInLargeMine() && shouldMineGuardianRemains) {
                     if (Rs2Walker.walkTo(new WorldPoint(3632, 9503, 0), 20)) {
-                        Rs2GameObject.interact(ObjectID.RUBBLE_43724);
+                        Rs2GameObject.interact(43724);
                         return true;
                     }
                 }
@@ -279,7 +296,7 @@ public class GotrScript extends Script {
                     }
                 }
             }
-            shieldCellIds = shieldCellIds.stream().filter(id -> id != ObjectID.CELL_TILE_BROKEN).collect(Collectors.toList());
+            shieldCellIds = shieldCellIds.stream().filter(id -> id != 43742).collect(Collectors.toList());
             int interactedObjectId = Rs2GameObject.interact(shieldCellIds);
             if (interactedObjectId != -1) {
                 log("Using cell with id " + interactedObjectId);
@@ -309,12 +326,12 @@ public class GotrScript extends Script {
         if (!Rs2Inventory.hasItem("Uncharged cell")) {
             // Drop one guardian essence if inventory is full
             if (Rs2Inventory.isFull()) {
-                if (Rs2Inventory.drop(ItemID.GUARDIAN_ESSENCE)) {
+                if (Rs2Inventory.drop(net.runelite.api.gameval.ItemID.GOTR_GUARDIAN_ESSENCE)) {
                     Microbot.log("Dropped one Guardian essence to make space for Uncharged cell");
                 }
             }
 
-            Rs2GameObject.interact(ObjectID.UNCHARGED_CELLS_43732, "Take-10");
+            Rs2GameObject.interact(UNCHARGED_CELLS, "Take-10");
             log("Taking uncharged cells...");
             Rs2Player.waitForAnimation();
         }
@@ -529,7 +546,7 @@ public class GotrScript extends Script {
             if (!isInLargeMine() && !isInHugeMine() && (!Rs2Inventory.hasItem(GUARDIAN_FRAGMENTS) || getStartTimer() == -1)) {
                 if (Rs2Walker.walkTo(new WorldPoint(3632, 9503, 0), 20)) {
                     log("Traveling to large mine...");
-                    Rs2GameObject.interact(ObjectID.RUBBLE_43724);
+                    Rs2GameObject.interact(43724);
                     if (sleepUntil(Rs2Player::isAnimating)) {
                         sleepUntil(GotrScript::isInLargeMine);
                         if (isInLargeMine()) {
