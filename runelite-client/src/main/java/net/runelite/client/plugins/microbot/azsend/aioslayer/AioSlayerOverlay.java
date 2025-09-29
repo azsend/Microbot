@@ -1,6 +1,7 @@
 package net.runelite.client.plugins.microbot.azsend.aioslayer;
 
 import net.runelite.client.plugins.microbot.Microbot;
+import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
 import net.runelite.client.ui.overlay.OverlayPanel;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.ui.overlay.components.LineComponent;
@@ -13,9 +14,12 @@ import java.time.Instant;
 
 public class AioSlayerOverlay extends OverlayPanel {
 
+    private final AioSlayerPlugin plugin;
+
     @Inject
     AioSlayerOverlay(AioSlayerPlugin plugin, AioSlayerConfig config) {
         super(plugin);
+        this.plugin = plugin;
         setPosition(OverlayPosition.TOP_LEFT);
         setNaughty();
     }
@@ -36,36 +40,49 @@ public class AioSlayerOverlay extends OverlayPanel {
                     .right("1.0.0")
                     .build());
 
-            if (AioSlayerScript.botState != null) {
+            // Display bot state
+            if (AioSlayerScriptNew.botState != null) {
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("State:")
-                        .right(AioSlayerScript.botState.getDescription())
+                        .right(AioSlayerScriptNew.botState.getDescription())
                         .build());
             }
 
-            if (AioSlayerScript.currentTask != null) {
+            // Display current task with count
+            String currentTask = Rs2Slayer.getSlayerTask();
+            int taskCount = Rs2Slayer.getSlayerTaskSize();
+            
+            if (currentTask != null && !currentTask.isEmpty()) {
+                String taskDisplay = taskCount > 0 ? 
+                    currentTask + " (" + taskCount + ")" : 
+                    currentTask;
+                    
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("Task:")
-                        .right(AioSlayerScript.currentTask)
+                        .right(taskDisplay)
                         .build());
-            }
-
-            if (AioSlayerScript.taskCount > 0) {
+            } else if (AioSlayerScriptNew.currentTask != null && !AioSlayerScriptNew.currentTask.isEmpty()) {
+                // Fallback to script's task info if Rs2Slayer doesn't have it
                 panelComponent.getChildren().add(LineComponent.builder()
-                        .left("Remaining:")
-                        .right(String.valueOf(AioSlayerScript.taskCount))
+                        .left("Task:")
+                        .right(AioSlayerScriptNew.currentTask)
+                        .build());
+            } else {
+                panelComponent.getChildren().add(LineComponent.builder()
+                        .left("Task:")
+                        .right("No Task")
                         .build());
             }
 
-            if (AioSlayerScript.tasksCompleted > 0) {
+            if (AioSlayerScriptNew.tasksCompleted > 0) {
                 panelComponent.getChildren().add(LineComponent.builder()
                         .left("Tasks Done:")
-                        .right(String.valueOf(AioSlayerScript.tasksCompleted))
+                        .right(String.valueOf(AioSlayerScriptNew.tasksCompleted))
                         .build());
             }
 
-            if (AioSlayerScript.startTime != null) {
-                Duration runtime = Duration.between(AioSlayerScript.startTime, Instant.now());
+            if (AioSlayerScriptNew.startTime != null) {
+                Duration runtime = Duration.between(AioSlayerScriptNew.startTime, Instant.now());
                 String formattedTime = String.format("%02d:%02d:%02d", 
                     runtime.toHours(), 
                     runtime.toMinutesPart(), 

@@ -71,6 +71,7 @@ public enum SlayerTaskEnum {
     WALL_BEASTS("Wall beasts", false, false, new int[]{}),
     WATERFIENDS("Waterfiends", false, false, new int[]{}),
     WEREWOLVES("Werewolves", false, false, new int[]{}),
+    WOLVES("Wolves", true, false, new int[]{}),
     WYRMS("Wyrms", false, false, new int[]{});
 
     private final String taskName;

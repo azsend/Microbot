@@ -37,7 +37,7 @@ public class AioSlayerPlugin extends Plugin {
     private AioSlayerOverlay aioSlayerOverlay;
     
     @Inject
-    AioSlayerScript aioSlayerScript;
+    AioSlayerScriptNew aioSlayerScript;
 
     @Override
     protected void startUp() throws AWTException {

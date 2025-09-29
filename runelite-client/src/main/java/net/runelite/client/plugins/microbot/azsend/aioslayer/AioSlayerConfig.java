@@ -622,6 +622,14 @@ public interface AioSlayerConfig extends Config {
     )
     String werewolvesSection = "Werewolves";
 
+    @ConfigSection(
+            name = "Wolves",
+            description = "Configuration for Wolves tasks",
+            position = 78,
+            closedByDefault = true
+    )
+    String wolvesSection = "Wolves";
+
     // General Settings
     @ConfigItem(
             name = "Slayer Master",
@@ -2664,6 +2672,75 @@ public interface AioSlayerConfig extends Config {
     )
     default SlayerTaskEnum.TaskAction werewolvesAction() {
         return SlayerTaskEnum.TaskAction.KILL;
+    }
+
+    // Wolves
+    @ConfigItem(
+            name = "Inventory Setup",
+            keyName = "wolvesSetup",
+            description = "Inventory setup for Wolves",
+            position = 0,
+            section = wolvesSection
+    )
+    default InventorySetup wolvesSetup() {
+        return null;
+    }
+
+    @ConfigItem(
+            name = "Task Action",
+            keyName = "wolvesAction",
+            description = "Action for Wolves task",
+            position = 1,
+            section = wolvesSection
+    )
+    default SlayerTaskEnum.TaskAction wolvesAction() {
+        return SlayerTaskEnum.TaskAction.KILL;
+    }
+
+    @ConfigItem(
+            name = "Use Cannon",
+            keyName = "wolvesCannon",
+            description = "Use cannon for Wolves",
+            position = 2,
+            section = wolvesSection
+    )
+    default boolean wolvesCannon() {
+        return true;
+    }
+
+    // Additional general config methods referenced by handlers
+    
+    @ConfigItem(
+            name = "Use Prayer",
+            keyName = "usePrayer",
+            description = "Use prayer potions and prayers",
+            position = 101,
+            section = combatSection
+    )
+    default boolean usePrayer() {
+        return false;
+    }
+
+    @ConfigItem(
+            name = "Use Offensive Prayers",
+            keyName = "useOffensivePrayers",
+            description = "Use offensive prayers during combat",
+            position = 102,
+            section = combatSection
+    )
+    default boolean useOffensivePrayers() {
+        return false;
+    }
+
+    @ConfigItem(
+            name = "Minimum Loot Value",
+            keyName = "minLootValue",
+            description = "Minimum GP value to loot items",
+            position = 0,
+            section = lootingSection
+    )
+    default int minLootValue() {
+        return 1000;
     }
 
 }
