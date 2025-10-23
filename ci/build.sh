@@ -25,11 +25,14 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 cd "$PROJECT_ROOT"
 
+# Clean previous builds
+mvn clean -q
+
 # Build the entire project
 mvn package -DskipTests=true -Dmaven.test.skip=true
 
 # Rename JAR to match official RuneLite naming convention
-MICROBOT_JAR="runelite-client/target/microbot-2.0.13.jar"
+MICROBOT_JAR="runelite-client/target/microbot-2.0.14.jar"
 RUNELITE_JAR="runelite-client/target/RuneLite.jar"
 
 if [ -f "$MICROBOT_JAR" ]; then

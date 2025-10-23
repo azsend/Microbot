@@ -7,6 +7,7 @@ import net.runelite.client.plugins.microbot.azsend.aioslayer.models.TaskConfigur
 import net.runelite.client.plugins.microbot.util.combat.Rs2Combat;
 import net.runelite.client.plugins.microbot.util.inventory.Rs2Inventory;
 import net.runelite.client.plugins.microbot.util.npc.Rs2Npc;
+import net.runelite.client.plugins.microbot.util.skills.slayer.Rs2Slayer;
 
 import java.util.List;
 
@@ -201,13 +202,13 @@ public class FinishingBlowHandler extends BaseTaskHandler {
         // Count available items
         int totalCount = 0;
         for (Integer itemId : finishingBlowItems) {
-            totalCount += Rs2Inventory.count(itemId);
+            totalCount += Rs2Inventory.itemQuantity(itemId);
         }
         
         // We want at least 10% more than the task count for safety
-        int requiredCount = (int) Math.ceil(getTaskCount() * 1.1);
-        
-        logInfo("Finishing blow items available: " + totalCount + ", required: " + requiredCount);
+        int requiredCount = (int) Math.ceil(getTaskCount());
+
+        logError("Finishing blow items available: " + totalCount + ", required: " + requiredCount);
         return totalCount >= requiredCount;
     }
     
@@ -215,8 +216,6 @@ public class FinishingBlowHandler extends BaseTaskHandler {
      * Gets the current slayer task count
      */
     private int getTaskCount() {
-        // This should be passed from the main script or retrieved from game state
-        // For now, return a safe default
-        return 50; // Could be improved by accessing actual task count
+        return Rs2Slayer.getSlayerTaskSize();
     }
 }

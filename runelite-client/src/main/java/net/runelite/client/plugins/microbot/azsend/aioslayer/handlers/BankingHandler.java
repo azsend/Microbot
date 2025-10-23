@@ -1,5 +1,6 @@
 package net.runelite.client.plugins.microbot.azsend.aioslayer.handlers;
 
+import net.runelite.api.coords.WorldPoint;
 import net.runelite.client.plugins.microbot.azsend.aioslayer.AioSlayerConfig;
 import net.runelite.client.plugins.microbot.azsend.aioslayer.enums.SlayerBotState;
 import net.runelite.client.plugins.microbot.azsend.aioslayer.models.TaskConfiguration;
@@ -28,11 +29,13 @@ public class BankingHandler extends BaseTaskHandler {
     
     private InventorySetupHandler inventoryHandler;
     private EquipmentHandler equipmentHandler;
+    private ShantayHandler shantayHandler;
     
     public BankingHandler(AioSlayerConfig config, TaskConfiguration taskConfig, StateCallback stateCallback) {
         super(config, taskConfig, stateCallback);
         this.inventoryHandler = new InventorySetupHandler(config, taskConfig, stateCallback);
         this.equipmentHandler = new EquipmentHandler(config, taskConfig, stateCallback);
+        this.shantayHandler = new ShantayHandler(config, taskConfig, stateCallback);
     }
     
     @Override
@@ -85,6 +88,22 @@ public class BankingHandler extends BaseTaskHandler {
             
             stateCallback.updateState(SlayerBotState.BANKING, "Finalizing setup");
             
+            logInfo("Banking completed successfully");
+
+            // Handle post-banking desert requirements (purchasing from Shantay)
+            if (taskConfig.isRequiresDesertGear() && shantayHandler.needsToPurchase()) {
+                stateCallback.updateState(SlayerBotState.BANKING, "Purchasing desert items from Shantay");
+
+                // Close bank
+                Rs2Bank.closeBank();
+                sleep(600);
+
+                if (!shantayHandler.execute()) {
+                    logError("Failed to purchase required desert items from Shantay");
+                    return false;
+                }
+            }
+            
             // Final validation
             if (!validateSetup()) {
                 logError("Setup validation failed");
@@ -96,7 +115,6 @@ public class BankingHandler extends BaseTaskHandler {
             Rs2Bank.closeBank();
             sleep(600);
             
-            logInfo("Banking completed successfully");
             return true;
             
         } catch (Exception e) {
@@ -116,61 +134,6 @@ public class BankingHandler extends BaseTaskHandler {
         return "BankingHandler";
     }
     
-    // /**
-    //  * Walks to the nearest suitable bank
-    //  */
-    // private boolean walkToBank() {
-
-    //     CompletableFuture.supplyAsync(Rs2Bank::getNearestBank)
-    //         .thenAccept(nearestBank -> {
-    //             if (nearestBank != null)
-    //             {
-    //                 startWalking(nearestBank.getWorldPoint());
-    //             }
-    //         })
-    //         .exceptionally(ex -> {
-    //             Microbot.log("Error while finding the nearest bank: " + ex.getMessage());
-    //             return false;
-    //         });
-
-
-    //     // // Find the closest bank first (before checking if we're near one)
-    //     // BankLocation closestBank = Rs2Bank.getNearestBank();
-    //     // if (closestBank == null) {
-    //     //     logError("No bank location found");
-    //     //     return false;
-    //     // }
-        
-    //     // // Check if we're already at the specific bank we found
-    //     // if (Rs2Bank.isNearBank(closestBank, 10)) {
-    //     //     logInfo("Already near bank: " + closestBank.name());
-    //     //     return true;
-    //     // }
-        
-    //     // logInfo("Walking to bank: " + closestBank.name() + " at " + closestBank.getWorldPoint());
-        
-    //     // // Walk to the bank
-    //     // if (!Rs2Walker.walkTo(closestBank.getWorldPoint())) {
-    //     //     logError("Failed to walk to bank location");
-    //     //     return false;
-    //     // }
-        
-    //     // // Wait until we arrive
-    //     // int attempts = 0;
-    //     // while (!Rs2Bank.isNearBank(closestBank, 10) && attempts < 20) {
-    //     //     sleep(1000);
-    //     //     attempts++;
-    //     // }
-        
-    //     // boolean arrived = Rs2Bank.isNearBank(closestBank, 10);
-    //     // if (arrived) {
-    //     //     logInfo("Successfully arrived at bank: " + closestBank.name());
-    //     // } else {
-    //     //     logError("Failed to arrive at bank within timeout");
-    //     // }
-        
-    //     return true;
-    // }
     
     /**
      * Deposits current inventory items (except items we want to keep)
@@ -213,9 +176,12 @@ public class BankingHandler extends BaseTaskHandler {
      * Restocks using InventorySetup integration and configured food type
      */
     private void restockSupplies() {
-        logInfo("Restocking using InventorySetup and configured settings");
+        logInfo("Restocking supplies for task: " + taskConfig.getTaskName());
         
-        // Get the InventorySetup for this task
+        // Step 1: Handle task-specific requirements first
+        handleTaskSpecificRequirements();
+        
+        // Step 2: Get the InventorySetup for this task
         InventorySetup inventorySetup = getInventorySetupForTask();
         
         if (inventorySetup != null) {
@@ -225,8 +191,9 @@ public class BankingHandler extends BaseTaskHandler {
             setupEquipmentWithOverrides(inventorySetup);
             setupInventoryWithOverrides(inventorySetup);
         } else {
-            logInfo("No InventorySetup configured, using basic restocking");
-            // Fallback to basic restocking
+            logInfo("No InventorySetup configured, using task-specific restocking");
+            // Fallback to task-specific restocking
+            restockTaskSpecificItems();
             restockConfiguredFood();
             
             // Restock potions if needed
@@ -235,10 +202,18 @@ public class BankingHandler extends BaseTaskHandler {
             }
         }
         
-        // Always check for finishing blow items regardless of inventory setup
+        // Step 3: Always check for finishing blow items regardless of inventory setup
         if (taskConfig.isRequiresSpecialKill()) {
             restockFinishingBlowItems();
         }
+        
+        // Step 4: Handle desert task requirements
+        if (taskConfig.isRequiresDesertGear()) {
+            handleDesertTaskRequirements();
+        }
+        
+        // Step 5: Handle other special requirements
+        handleSpecialRequirements();
     }
     
     /**
@@ -251,14 +226,93 @@ public class BankingHandler extends BaseTaskHandler {
         
         String taskName = taskConfig.getTaskName().toLowerCase().trim();
         
-        // Map task names to their config methods
+        // Map task names to their config methods - comprehensive mapping
         switch (taskName) {
+            case "aberrant spectres":
+            case "aberrant spectre":
+                return config.aberrantSpectresSetup();
+            case "abyssal demons":
+            case "abyssal demon":
+                return config.abyssalDemonsSetup();
+            case "adamant dragons":
+            case "adamant dragon":
+                return config.adamantDragonsSetup();
+            case "ankou":
+                return config.ankouSetup();
+            case "aviansies":
+            case "avianise":
+                return config.aviansiesSetup();
+            case "bandits":
+            case "bandit":
+                return config.banditsSetup();
+            case "banshees":
+            case "banshee":
+                return config.bansheesSetup();
+            case "basilisks":
+            case "basilisk":
+                return config.basilisksSetup();
+            case "black demons":
+            case "black demon":
+                return config.blackDemonsSetup();
+            case "black dragons":
+            case "black dragon":
+                return config.blackDragonsSetup();
+            case "bloodveld":
+                return config.bloodveldSetup();
+            case "blue dragons":
+            case "blue dragon":
+                return config.blueDragonsSetup();
+            case "brine rats":
+            case "brine rat":
+                return config.brineRatsSetup();
+            case "cave bugs":
+            case "cave bug":
+                return config.caveBugsSetup();
+            case "cave crawlers":
+            case "cave crawler":
+                return config.caveCrawlersSetup();
+            case "cave horrors":
+            case "cave horror":
+                return config.caveHorrorsSetup();
+            case "cave kraken":
+                return config.caveKrakenSetup();
+            case "cave slimes":
+            case "cave slime":
+                return config.caveSlimesSetup();
+            case "cockatrice":
+                return config.cockatriceSetup();
+            case "crawling hands":
+            case "crawling hand":
+                return config.crawlingHandsSetup();
+            case "crocodiles":
+            case "crocodile":
+                return findInventorySetupByName(config.crocodilesSetup());
+            case "dagannoth":
+                return config.dagannothSetup();
+            case "dust devils":
+            case "dust devil":
+                return config.dustDevilsSetup();
+            case "gargoyles":
+            case "gargoyle":
+                return config.gargoylesSetup();
+            case "kalphite":
+                return config.kalphiteSetup();
+            case "lizards":
+            case "lizard":
+                return config.lizardsSetup();
+            case "rockslugs":
+            case "rockslug":
+                return config.rockslugsSetup();
             case "wolves":
+            case "wolf":
                 return config.wolvesSetup();
             case "werewolves":
+            case "werewolf":
                 return config.werewolvesSetup();
-            case "banshees":
-                return config.bansheesSetup();
+            case "zygomites":
+            case "zygomite":
+            case "mutated zygomites":
+                return config.mutatedZygomitesSetup();
             // Add more cases as needed
             default:
                 logInfo("No InventorySetup method found for task: " + taskName);
@@ -831,6 +885,324 @@ public class BankingHandler extends BaseTaskHandler {
     }
     
     /**
+     * Handles task-specific requirements before general restocking
+     */
+    private void handleTaskSpecificRequirements() {
+        logInfo("Handling task-specific requirements for: " + taskConfig.getTaskName());
+        
+        // Handle extra inventory items defined in task configuration
+        if (taskConfig.getExtraInventoryItems() != null) {
+            for (TaskConfiguration.RequiredItem requiredItem : taskConfig.getExtraInventoryItems()) {
+                withdrawRequiredItem(requiredItem);
+            }
+        }
+        
+        // Handle travel items
+        if (taskConfig.getTravelItems() != null) {
+            for (Integer itemId : taskConfig.getTravelItems()) {
+                if (!Rs2Inventory.hasItem(itemId)) {
+                    String itemName = getItemNameById(itemId);
+                    if (Rs2Bank.hasItem(itemId)) {
+                        logInfo("Withdrawing travel item: " + itemName);
+                        Rs2Bank.withdrawOne(itemId);
+                        sleep(800);
+                    } else {
+                        logError("Missing travel item in bank: " + itemName);
+                    }
+                }
+            }
+        }
+    }
+    
+    /**
+     * Restocks task-specific items when no inventory setup is configured
+     */
+    private void restockTaskSpecificItems() {
+        logInfo("Restocking task-specific items");
+        
+        // Handle antifire potions for dragons
+        if (taskConfig.isRequiresAntifire()) {
+            restockAntifirePotions();
+        }
+        
+        if (taskConfig.isRequiresSuperAntifire()) {
+            restockSuperAntifirePotions();
+        }
+        
+        // Handle stamina potions
+        if (taskConfig.isRequiresStaminaPotions()) {
+            restockStaminaPotions();
+        }
+        
+        // Handle antipoison
+        if (taskConfig.isRequiresAntiPoison()) {
+            restockAntipoisonPotions();
+        }
+    }
+    
+    /**
+     * Handles desert task specific requirements
+     */
+    private void handleDesertTaskRequirements() {
+        logInfo("Handling desert task requirements for: " + taskConfig.getTaskName());
+
+        // Check if we need Shantay pass (only if not already in desert)
+        if (!isPlayerInDesert()) {
+            if (!Rs2Inventory.hasItem("Shantay pass")) {
+                if (Rs2Bank.hasItem("Shantay pass")) {
+                    logInfo("Withdrawing Shantay pass for desert access");
+                    Rs2Bank.withdrawOne("Shantay pass");
+                    sleep(800);
+                }
+            }
+        }
+        
+        // Handle waterskins - ensure we have at least 3 full waterskins
+        int currentWaterskins = getWaterskinCount();
+        int fullWaterskins = getFullWaterskinCount();
+        
+        if (fullWaterskins < 3) {
+            int needed = 3 - fullWaterskins;
+            if (Rs2Bank.hasItem("Waterskin(4)")) {
+                logInfo("Withdrawing " + needed + " Waterskin(4) for desert task");
+                Rs2Bank.withdrawX("Waterskin(4)", needed);
+                sleep(1000);
+            }
+        } else {
+            logInfo("Already have sufficient waterskins: " + fullWaterskins);
+        }
+
+        // Withdraw coins if we need to purchase anything from Shantay
+        int coinsNeeded = shantayHandler.calculatePurchaseCost();
+        if (coinsNeeded > 0) {
+            logInfo("Withdrawing " + coinsNeeded + " coins for desert item purchases from Shantay");
+            Rs2Bank.withdrawX("Coins", coinsNeeded);
+            sleep(1000);
+        }
+    }
+    
+    /**
+     * Handles other special requirements
+     */
+    private void handleSpecialRequirements() {
+        // Handle light source requirement
+        if (taskConfig.isRequiresLightSource()) {
+            ensureLightSource();
+        }
+    }
+    
+    /**
+     * Withdraws a required item based on task configuration
+     */
+    private void withdrawRequiredItem(TaskConfiguration.RequiredItem requiredItem) {
+        int currentCount = Rs2Inventory.count(requiredItem.getItemId());
+        if (currentCount >= requiredItem.getQuantity()) {
+            logInfo("Already have enough " + requiredItem.getItemName() + ": " + currentCount);
+            return;
+        }
+        
+        int needed = requiredItem.getQuantity() - currentCount;
+        if (Rs2Bank.hasItem(requiredItem.getItemId())) {
+            logInfo("Withdrawing required item: " + requiredItem.getItemName() + " x" + needed);
+            if (needed == 1) {
+                Rs2Bank.withdrawOne(requiredItem.getItemId());
+            } else {
+                Rs2Bank.withdrawX(requiredItem.getItemId(), needed);
+            }
+            sleep(800);
+        } else {
+            logError("Missing required item in bank: " + requiredItem.getItemName());
+        }
+    }
+    
+    /**
+     * Restocks antifire potions
+     */
+    private void restockAntifirePotions() {
+        int currentCount = Rs2Inventory.count(item ->
+            item.getName().toLowerCase().contains("antifire potion")
+        );
+        
+        if (currentCount >= 2) {
+            logInfo("Already have enough antifire potions: " + currentCount);
+            return;
+        }
+        
+        int needed = 2 - currentCount;
+        if (Rs2Bank.hasItem("Antifire potion(4)")) {
+            logInfo("Withdrawing antifire potions: " + needed);
+            Rs2Bank.withdrawX("Antifire potion(4)", needed);
+            sleep(1000);
+        } else {
+            logError("No antifire potions found in bank");
+        }
+    }
+    
+    /**
+     * Restocks super antifire potions
+     */
+    private void restockSuperAntifirePotions() {
+        int currentCount = Rs2Inventory.count(item ->
+            item.getName().toLowerCase().contains("super antifire")
+        );
+        
+        if (currentCount >= 2) {
+            logInfo("Already have enough super antifire potions: " + currentCount);
+            return;
+        }
+        
+        int needed = 2 - currentCount;
+        if (Rs2Bank.hasItem("Super antifire potion(4)")) {
+            logInfo("Withdrawing super antifire potions: " + needed);
+            Rs2Bank.withdrawX("Super antifire potion(4)", needed);
+            sleep(1000);
+        } else {
+            logError("No super antifire potions found in bank");
+        }
+    }
+    
+    /**
+     * Restocks stamina potions
+     */
+    private void restockStaminaPotions() {
+        int currentCount = Rs2Inventory.count(item ->
+            item.getName().toLowerCase().contains("stamina potion")
+        );
+        
+        if (currentCount >= 2) {
+            logInfo("Already have enough stamina potions: " + currentCount);
+            return;
+        }
+        
+        int needed = 2 - currentCount;
+        if (Rs2Bank.hasItem("Stamina potion(4)")) {
+            logInfo("Withdrawing stamina potions: " + needed);
+            Rs2Bank.withdrawX("Stamina potion(4)", needed);
+            sleep(1000);
+        } else {
+            logError("No stamina potions found in bank");
+        }
+    }
+    
+    /**
+     * Restocks antipoison potions
+     */
+    private void restockAntipoisonPotions() {
+        int currentCount = Rs2Inventory.count(item ->
+            item.getName().toLowerCase().contains("antipoison")
+        );
+        
+        if (currentCount >= 2) {
+            logInfo("Already have enough antipoison potions: " + currentCount);
+            return;
+        }
+        
+        int needed = 2 - currentCount;
+        if (Rs2Bank.hasItem("Antipoison(4)")) {
+            logInfo("Withdrawing antipoison potions: " + needed);
+            Rs2Bank.withdrawX("Antipoison(4)", needed);
+            sleep(1000);
+        } else {
+            logError("No antipoison potions found in bank");
+        }
+    }
+    
+    /**
+     * Ensures we have a light source for tasks that require it
+     */
+    private void ensureLightSource() {
+        // Check for various light sources
+        String[] lightSources = {
+            "Bullseye lantern", "Candle lantern", "Oil lantern", 
+            "Candle", "Torch", "Black candle"
+        };
+        
+        boolean hasLightSource = false;
+        for (String lightSource : lightSources) {
+            if (Rs2Inventory.hasItem(lightSource) || Rs2Equipment.isWearing(lightSource)) {
+                hasLightSource = true;
+                break;
+            }
+        }
+        
+        if (!hasLightSource) {
+            // Try to withdraw a light source
+            for (String lightSource : lightSources) {
+                if (Rs2Bank.hasItem(lightSource)) {
+                    logInfo("Withdrawing light source: " + lightSource);
+                    Rs2Bank.withdrawOne(lightSource);
+                    sleep(800);
+                    return;
+                }
+            }
+            logError("No light source found in bank - task may fail");
+        }
+    }
+    
+    /**
+     * Checks if player is currently in desert region
+     */
+    private boolean isPlayerInDesert() {
+        WorldPoint playerLocation = Rs2Player.getWorldLocation();
+        if (playerLocation == null) {
+            return false;
+        }
+        
+        int x = playerLocation.getX();
+        int y = playerLocation.getY();
+        
+        // Kharidian Desert region bounds - south of Shantay Pass
+        return x >= 3200 && x <= 3520 && y >= 2880 && y <= 3100;
+    }
+    
+    /**
+     * Gets count of all waterskins in inventory
+     */
+    private int getWaterskinCount() {
+        return Rs2Inventory.count("Waterskin(4)") +
+               Rs2Inventory.count("Waterskin(3)") +
+               Rs2Inventory.count("Waterskin(2)") +
+               Rs2Inventory.count("Waterskin(1)");
+    }
+    
+    /**
+     * Gets count of full waterskins in inventory and bank
+     */
+    private int getFullWaterskinCount() {
+        int count = Rs2Inventory.count("Waterskin(4)");
+        if (Rs2Bank.isOpen()) {
+            count += Rs2Bank.count("Waterskin(4)");
+        }
+        return count;
+    }
+    
+    
+    /**
+     * Finds inventory setup by name (for string-based config methods)
+     */
+    private InventorySetup findInventorySetupByName(String setupName) {
+        if (setupName == null || setupName.trim().isEmpty()) {
+            return null;
+        }
+        
+        // This would need to integrate with the inventory setup plugin
+        // For now, return null and log the setup name
+        logInfo("Looking for inventory setup by name: " + setupName);
+        return null;
+    }
+    
+    /**
+     * Gets item name by ID - basic implementation
+     */
+    private String getItemNameById(int itemId) {
+        try {
+            return Microbot.getItemManager().getItemComposition(itemId).getName();
+        } catch (Exception e) {
+            return "Unknown Item (" + itemId + ")"; 
+        }
+    }
+    
+    /**
      * Quick banking for restocking during a task
      */
     public boolean quickRestock() {
@@ -848,6 +1220,21 @@ public class BankingHandler extends BaseTaskHandler {
         restockFood();
         restockPrayerPotions();
         restockFinishingBlowItems();
+        
+        // Handle desert requirements if needed
+        if (taskConfig.isRequiresDesertGear()) {
+            handleDesertTaskRequirements();
+            
+            // Handle post-banking purchases if needed during quick restock
+            if (shantayHandler.needsToPurchase()) {
+                Rs2Bank.closeBank();
+                if (!shantayHandler.execute()) {
+                    logError("Failed to purchase required desert items during quick restock");
+                    return false;
+                }
+                return true; // Exit early since bank is already closed
+            }
+        }
         
         Rs2Bank.closeBank();
         return true;

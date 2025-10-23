@@ -97,7 +97,7 @@ public class InventorySetupHandler extends BaseTaskHandler {
         Integer protectiveItemId = taskConfig.getProtectiveEquipmentId();
         if (protectiveItemId != null) {
             if (!Rs2Equipment.isWearing(protectiveItemId) && !hasSlayerHelmetForProtection(protectiveItemId)) {
-                logInfo("Missing required protective equipment: " + protectiveItemId);
+                logError("Missing required protective equipment: " + protectiveItemId);
                 return false;
             }
         }
@@ -106,7 +106,7 @@ public class InventorySetupHandler extends BaseTaskHandler {
         if (taskConfig.isRequiresSpecialKill()) {
             FinishingBlowHandler finishingHandler = new FinishingBlowHandler(config, taskConfig, stateCallback);
             if (!finishingHandler.hasEnoughFinishingBlowItems()) {
-                logInfo("Insufficient finishing blow items");
+                logError("Insufficient finishing blow items");
                 return false;
             }
         }
@@ -116,7 +116,7 @@ public class InventorySetupHandler extends BaseTaskHandler {
         if (extraItems != null) {
             for (TaskConfiguration.RequiredItem item : extraItems) {
                 if (!Rs2Inventory.hasItemAmount(item.getItemId(), item.getQuantity())) {
-                    logInfo("Missing required item: " + item.getItemName());
+                    logError("Missing required item: " + item.getItemName());
                     return false;
                 }
             }
