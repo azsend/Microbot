@@ -6,13 +6,11 @@ import net.runelite.client.config.ConfigProfile;
 import net.runelite.client.plugins.microbot.Microbot;
 import net.runelite.client.plugins.microbot.Script;
 import net.runelite.client.plugins.microbot.breakhandler.BreakHandlerScript;
-import net.runelite.client.plugins.microbot.globval.enums.InterfaceTab;
 import net.runelite.client.plugins.microbot.util.discord.Rs2Discord;
 import net.runelite.client.plugins.microbot.util.discord.models.DiscordEmbed;
 import net.runelite.client.plugins.microbot.util.player.Rs2Player;
 import net.runelite.client.plugins.microbot.util.player.Rs2PlayerModel;
-import net.runelite.client.plugins.microbot.util.security.Login;
-import net.runelite.client.plugins.microbot.util.tabs.Rs2Tab;
+import net.runelite.client.plugins.microbot.util.security.LoginManager;
 import net.runelite.client.plugins.microbot.util.world.Rs2WorldUtil;
 
 import java.time.Duration;
@@ -56,8 +54,8 @@ public class AutoLoginScript extends Script {
         mainScheduledFuture = scheduledExecutorService.scheduleWithFixedDelay(() -> {
             try {
                 if (!super.run()) return;
-                Rs2Tab.switchTo(InterfaceTab.INVENTORY); // ensure we are not on a blocking tab
                 if (BreakHandlerScript.isBreakActive() || BreakHandlerScript.isMicroBreakActive()) return;
+
 
                 // check for ban detection first
                 checkForBan();
@@ -259,7 +257,7 @@ public class AutoLoginScript extends Script {
                             targetWorld = config.world();
                             log.info("Using preferred world: {}", targetWorld);
                         } else {
-                            ConfigProfile activeProfile = Login.activeProfile;
+                            ConfigProfile activeProfile = LoginManager.getActiveProfile();
                             boolean isMemberFromProfile = activeProfile != null && activeProfile.isMember();
                             boolean isLocalPlayerAvailable = Microbot.getClient()!=null && Microbot.getClient().getLocalPlayer() != null;
                             boolean isMemberFromClient = Microbot.getClient()!=null && Microbot.getClient().getLocalPlayer() != null ? Rs2Player.isMember() : false;
@@ -306,7 +304,7 @@ public class AutoLoginScript extends Script {
                         
                     default:
                         // fallback to legacy behavior                        
-                        targetWorld = Login.getRandomWorld(Rs2Player.isMember());                        
+                        targetWorld = LoginManager.getRandomWorld(Rs2Player.isMember());                        
                         if(!Rs2WorldUtil.canAccessWorld(targetWorld)) {
                             log.warn("Randomly selected world {} is not accessible, using default world {}", targetWorld, config.world());
                             targetWorld = config.world();
@@ -319,12 +317,18 @@ public class AutoLoginScript extends Script {
             retryCount++;
             lastLoginAttemptTime = Instant.now();
             
+            boolean loginInitiated;
             if (targetWorld != -1) {
                 log.info("Attempting login to selected world: {} (attempt {})", targetWorld, retryCount);
-                new Login(targetWorld);
+                loginInitiated = LoginManager.login(targetWorld);
             } else {
                 log.info("Using default login (current world or last used) (attempt {})", retryCount);
-                new Login();
+                loginInitiated = LoginManager.login();
+            }
+
+            if (!loginInitiated) {
+                log.debug("AutoLogin detected rejected attempt (gameState: {}, attemptActive: {})",
+                    LoginManager.getGameState(), LoginManager.isLoginAttemptActive());
             }
             
             
